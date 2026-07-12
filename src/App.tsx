@@ -89,6 +89,13 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [jobsCompletedCount, setJobsCompletedCount] = useState(0);
+  const [showDetailedLogs, setShowDetailedLogs] = useState(() => {
+    try {
+      return localStorage.getItem("pf_show_detailed_logs") === "true";
+    } catch {
+      return false;
+    }
+  });
 
   // Active print processing lock
   const processingJobs = useRef<Set<string>>(new Set());
@@ -129,6 +136,116 @@ export default function App() {
     } catch (e) {
       return isoString;
     }
+  };
+
+  const getDisplayMessage = (msg: string) => {
+    if (showDetailedLogs) return msg;
+
+    let cleanMsg = msg;
+
+    if (cleanMsg.includes("Initializing PrintFlow Agent")) {
+      const isTauriMode = cleanMsg.includes("Tauri Mode: Yes");
+      return isTauriMode 
+        ? "PrintFlow Agent is starting up..." 
+        : "PrintFlow Agent starting in simulation mode...";
+    }
+    if (cleanMsg.includes("Restored authenticated session")) {
+      return "Welcome back! Logged in successfully.";
+    }
+    const printerMatch = cleanMsg.match(/Discovered (\d+) local hardware printers/);
+    if (printerMatch) {
+      return `Found ${printerMatch[1]} printers connected to this computer.`;
+    }
+    if (cleanMsg.includes("Loaded mock printers")) {
+      return "Loaded test printers for preview.";
+    }
+    const dashboardMatch = cleanMsg.match(/Connected to shop dashboard: (.+)/);
+    if (dashboardMatch) {
+      return `Connected to ${dashboardMatch[1]} dashboard.`;
+    }
+    if (cleanMsg.includes("Attempting connection to")) {
+      return "Connecting to PrintFlow Cloud...";
+    }
+    if (cleanMsg.includes("Authentication successful")) {
+      return "Signed in successfully.";
+    }
+    if (cleanMsg.includes("Synchronizing configurations")) {
+      return "Syncing settings with the cloud...";
+    }
+    if (cleanMsg.includes("Rates & designated hardware mappings spooled")) {
+      return "Printer settings synced successfully.";
+    }
+    if (cleanMsg.includes("Connecting terminal online...")) {
+      return "Connecting to the cloud network...";
+    }
+    if (cleanMsg.includes("Going offline...")) {
+      return "Disconnecting from the cloud network...";
+    }
+    if (cleanMsg.includes("Terminal is now LIVE")) {
+      return "Your shop terminal is now ONLINE and ready to receive prints.";
+    }
+    if (cleanMsg === "Terminal offline") {
+      return "Your shop terminal is now OFFLINE.";
+    }
+    
+    // Printing flow
+    const receivedMatch = cleanMsg.match(/Received print job (\S+) for document: (.+)/);
+    if (receivedMatch) {
+      return `New print request received: "${receivedMatch[2]}" (Job: ${receivedMatch[1]})`;
+    }
+    const queuedMatch = cleanMsg.match(/Job (\S+) queued locally\./);
+    if (queuedMatch) {
+      return `Job ${queuedMatch[1]} is preparing to print.`;
+    }
+    const downloadMatch = cleanMsg.match(/Downloading and sending job (\S+) to native Edge print automation\.\.\./);
+    if (downloadMatch) {
+      return `Downloading files and sending job ${downloadMatch[1]} to printer...`;
+    }
+    if (cleanMsg.includes("Document spooled successfully. Printing pages...")) {
+      return "Sent to printer queue. Starting print job...";
+    }
+    
+    const pageProgressMatch = cleanMsg.match(/Printing page (\d+) of (\d+) \(Status: (.*?)\)/i);
+    if (pageProgressMatch) {
+      const [_, page, total, status] = pageProgressMatch;
+      let statusStr = "";
+      if (status.includes("Error")) statusStr = " - Printer error detected";
+      else if (status.includes("PaperOut")) statusStr = " - Printer out of paper";
+      else if (status.includes("Offline")) statusStr = " - Printer offline";
+      return `Printing page ${page} of ${total}${statusStr}...`;
+    }
+
+    if (cleanMsg.includes("Printed completed successfully.") || cleanMsg.includes("Print completed successfully.")) {
+      return "Print job completed successfully.";
+    }
+    const printedSuccessMatch = cleanMsg.match(/Job (\S+) printed successfully on "(.+)"!/);
+    if (printedSuccessMatch) {
+      return `Finished printing job ${printedSuccessMatch[1]} on printer "${printedSuccessMatch[2]}".`;
+    }
+    if (cleanMsg.includes("Print spool initiated via SumatraPDF")) {
+      return "Document sent to printer successfully.";
+    }
+    if (cleanMsg.includes("No printer designated for")) {
+      const colorType = cleanMsg.includes("Color") ? "Color" : "B&W";
+      return `Error: No printer configured for ${colorType} printing. Please check your settings.`;
+    }
+    
+    const simSpoolMatch = cleanMsg.match(/\[SIMULATION\] Spooling (\d+) copies to printer "(.*?)" \((.*?)\)\.\.\./);
+    if (simSpoolMatch) {
+      const [_, copies, printerName, duplexMode] = simSpoolMatch;
+      const pagesText = copies === "1" ? "1 copy" : `${copies} copies`;
+      const modeText = duplexMode.toLowerCase() === "double-sided" ? "double-sided" : "single-sided";
+      return `[Simulation] Printing ${pagesText} on "${printerName}" (${modeText})...`;
+    }
+
+    if (cleanMsg.startsWith("[Job Spooler] ")) {
+      cleanMsg = cleanMsg.replace("[Job Spooler] ", "");
+    }
+    if (cleanMsg.startsWith("Edge Print Spooler: ")) {
+      cleanMsg = cleanMsg.replace("Edge Print Spooler: ", "");
+    }
+
+    return cleanMsg;
   };
 
   const loadArchivedJobs = async () => {
@@ -263,7 +380,7 @@ export default function App() {
       addLog(`Initializing PrintFlow Agent (Tauri Mode: ${isTauri ? "Yes" : "No (Simulation)"})`, "info");
       
       // Load saved server URL & token from localStorage/Tauri
-      const savedServer = localStorage.getItem("pf_server_url") || "http://localhost:3000";
+      const savedServer = (localStorage.getItem("pf_server_url") || "http://localhost:3000").trim().replace(/\/+$/, "");
       setServerUrl(savedServer);
 
       if (isTauri) {
@@ -356,10 +473,11 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    addLog(`Attempting connection to ${serverUrl}...`, "info");
+    const cleanUrl = serverUrl.trim().replace(/\/+$/, "");
+    addLog(`Attempting connection to ${cleanUrl}...`, "info");
 
     try {
-      const response = await fetch(`${serverUrl}/api/auth/login`, {
+      const response = await fetch(`${cleanUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -377,12 +495,13 @@ export default function App() {
       const activeToken = data.token;
       setToken(activeToken);
       setIsLoggedIn(true);
-      localStorage.setItem("pf_server_url", serverUrl);
+      localStorage.setItem("pf_server_url", cleanUrl);
       localStorage.setItem("pf_token", activeToken);
+      setServerUrl(cleanUrl);
       addLog("Authentication successful", "success");
 
       // Reload config & shop configuration
-      await fetchShopDetails(serverUrl, activeToken);
+      await fetchShopDetails(cleanUrl, activeToken);
 
       if (isTauri) {
         const { invoke } = await import("@tauri-apps/api/core");
@@ -1215,22 +1334,58 @@ export default function App() {
               </div>
 
               {activeLogTab === "active" ? (
-                <button
-                  onClick={() => setLogs([])}
-                  className="text-[9px] text-slate-500 hover:text-slate-300 transition-colors uppercase font-bold tracking-wider cursor-pointer"
-                >
-                  Clear Active
-                </button>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showDetailedLogs}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setShowDetailedLogs(next);
+                        localStorage.setItem("pf_show_detailed_logs", String(next));
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="relative w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white peer-checked:after:border-transparent"></div>
+                    <span className="text-[10px] font-semibold text-slate-400 peer-checked:text-indigo-400 transition-colors">
+                      Detailed Logs
+                    </span>
+                  </label>
+                  <button
+                    onClick={() => setLogs([])}
+                    className="text-[9px] text-slate-500 hover:text-slate-300 transition-colors uppercase font-bold tracking-wider cursor-pointer"
+                  >
+                    Clear Active
+                  </button>
+                </div>
               ) : (
-                <button
-                  onClick={() => {
-                    localStorage.removeItem("pf_log_history");
-                    setHistoryLogs([]);
-                  }}
-                  className="text-[9px] text-slate-500 hover:text-slate-300 transition-colors uppercase font-bold tracking-wider cursor-pointer"
-                >
-                  Clear History
-                </button>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showDetailedLogs}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setShowDetailedLogs(next);
+                        localStorage.setItem("pf_show_detailed_logs", String(next));
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="relative w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white peer-checked:after:border-transparent"></div>
+                    <span className="text-[10px] font-semibold text-slate-400 peer-checked:text-indigo-400 transition-colors">
+                      Detailed Logs
+                    </span>
+                  </label>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem("pf_log_history");
+                      setHistoryLogs([]);
+                    }}
+                    className="text-[9px] text-slate-500 hover:text-slate-300 transition-colors uppercase font-bold tracking-wider cursor-pointer"
+                  >
+                    Clear History
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1254,7 +1409,7 @@ export default function App() {
                               : "text-slate-300"
                           }
                         >
-                          {log.message}
+                          {getDisplayMessage(log.message)}
                         </span>
                       </div>
                     ))
@@ -1280,7 +1435,7 @@ export default function App() {
                               : "text-slate-300"
                           }
                         >
-                          {log.message}
+                          {getDisplayMessage(log.message)}
                         </span>
                       </div>
                     ))

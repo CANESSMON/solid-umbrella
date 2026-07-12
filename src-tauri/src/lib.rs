@@ -175,6 +175,7 @@ fn print_document(
         let filepath_str_clone = filepath_str.clone();
         let orientation_clone = orientation.clone();
         let pages_clone = pages.clone();
+        let page_size_clone = page_size.clone();
 
         thread::spawn(move || {
             let mut spool_success = false;
@@ -314,6 +315,14 @@ fn print_document(
                         print_settings.push("duplexlong".to_string());
                     } else {
                         print_settings.push("simplex".to_string());
+                    }
+                    if is_color {
+                        print_settings.push("color".to_string());
+                    } else {
+                        print_settings.push("monochrome".to_string());
+                    }
+                    if !page_size_clone.is_empty() {
+                        print_settings.push(format!("paper={}", page_size_clone.to_lowercase()));
                     }
                     print_settings.push("fit".to_string());
 
