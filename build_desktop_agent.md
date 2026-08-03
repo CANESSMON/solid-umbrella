@@ -1,6 +1,6 @@
-# Compiling the PrintFlow Desktop Agent (.exe)
+# Compiling the RapidDocs Desktop Agent (.exe)
 
-This guide provides step-by-step instructions to compile the **PrintFlow Desktop Agent** into a standalone, lightweight, native Windows executable (`.exe`).
+This guide provides step-by-step instructions to compile the **RapidDocs Desktop Agent** into a standalone, lightweight, native Windows executable (`.exe`).
 
 ---
 
@@ -69,4 +69,4 @@ Once the compile build completes successfully:
   d:\proj\agent\src-tauri\target\release\agent.exe
   ```
 
-Copy this `agent.exe` to any Windows computer to run the PrintFlow terminal link!
+Copy this `agent.exe` to any Windows computer to run the RapidDocs terminal link!

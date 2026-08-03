@@ -1,6 +1,6 @@
-# PrintFlow SaaS: Proposed Chromium-Based Print Automation Architecture
+# RapidDocs SaaS: Proposed Chromium-Based Print Automation Architecture
 
-This document proposes a robust, browser-driven printing and monitoring architecture for the **PrintFlow Desktop Agent**. It replaces the flaky native/CLI print utilities (`PDFtoPrinter.exe`, `System.Drawing`, print verbs) with an automated, isolated Microsoft Edge print session, coupled with real-time print queue monitoring and a local job archiving fallback.
+This document proposes a robust, browser-driven printing and monitoring architecture for the **RapidDocs Desktop Agent**. It replaces the flaky native/CLI print utilities (`PDFtoPrinter.exe`, `System.Drawing`, print verbs) with an automated, isolated Microsoft Edge print session, coupled with real-time print queue monitoring and a local job archiving fallback.
 
 ---
 
@@ -22,7 +22,7 @@ The following sequence diagram illustrates the automated printing lifecycle, inc
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Cloud as PrintFlow Cloud Server
+    participant Cloud as RapidDocs Cloud Server
     participant Agent as Tauri Desktop Agent (Rust/JS)
     participant Edge as Edge Kiosk Process
     participant Spooler as Windows Print Spooler
@@ -96,7 +96,7 @@ The Tauri agent starts polling the print queue via PowerShell's `Get-PrintJob` a
 
 To ensure the shop owner can fulfill paid printing jobs in case of automation failures, the Desktop Agent will manage a local database of the last 50 jobs.
 
-1. **Storage Location**: `%APPDATA%\PrintFlowAgent\jobs_archive\`
+1. **Storage Location**: `%APPDATA%\RapidDocsAgent\jobs_archive\`
 2. **Metadata Store**: A local JSON file `jobs_archive.json` listing:
    - Job Token (`PF-XXXX`)
    - Document ID & File path
@@ -137,7 +137,7 @@ fn print_via_edge(
     {
         // 1. Setup Temp Profile & write Preferences
         let temp_dir = std::env::temp_dir();
-        let profile_dir = temp_dir.join("printflow-edge-profile");
+        let profile_dir = temp_dir.join("rapiddocs-edge-profile");
         let default_dir = profile_dir.join("Default");
         fs::create_dir_all(&default_dir).map_err(|e| e.to_string())?;
 
@@ -267,7 +267,7 @@ export async function archiveJob(job: any, fileUrl: string): Promise<string> {
   
   // 1. Download file via Tauri backend or fetch
   const localFileName = `${job.token}_${job.document.originalName}`;
-  const localPath = `C:\\Users\\Asus\\AppData\\Roaming\\PrintFlowAgent\\jobs_archive\\${localFileName}`;
+  const localPath = `C:\\Users\\Asus\\AppData\\Roaming\\RapidDocsAgent\\jobs_archive\\${localFileName}`;
   
   // 2. Load jobs_archive.json, append new job metadata
   let db: ArchivedJob[] = [];
@@ -315,7 +315,7 @@ Below is the proposed layout design to list these 50 stored jobs in the Tauri ag
 
 ```
 +---------------------------------------------------------------------------------------------------------------+
-|  PrintFlow Agent  [LIVE - ONLINE]                                                         Today: ₹1,420.00    |
+|  RapidDocs Agent  [LIVE - ONLINE]                                                         Today: ₹1,420.00    |
 +---------------------------------------------------------------------------------------------------------------+
 |  [ Printer Mappings ]         [ LOCAL JOB ARCHIVE (Last 50 Paid Jobs) ]                                      |
 |  B&W: Canon LBP2900           Search Token or File...                                       [ Open Archive Folder ] |

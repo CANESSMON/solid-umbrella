@@ -1,6 +1,6 @@
-# PrintFlow Desktop Agent Walkthrough
+# RapidDocs Desktop Agent Walkthrough
 
-The PrintFlow Desktop Agent is an ultra-lightweight client that connects local hardware printers to the cloud print queue. Since the host environment is not pre-installed with Rust compiler toolchains, the Desktop Agent has been engineered with a **dual-mode runtime strategy**:
+The RapidDocs Desktop Agent is an ultra-lightweight client that connects local hardware printers to the cloud print queue. Since the host environment is not pre-installed with Rust compiler toolchains, the Desktop Agent has been engineered with a **dual-mode runtime strategy**:
 1. **Native Client Mode (Tauri 2.x)**: When compiled as an `.exe`, it uses native Rust system commands for local hardware discovery and shell-spool printing.
 2. **Browser Simulation Mode (Vite Preview)**: When loaded inside any standard web browser, it mocks native hardware layer calls, allowing full operator dashboard simulation, rate synchronization, and job queue testing.
 
@@ -60,7 +60,7 @@ Operators can toggle **"Go Live / Go Offline"** in one click. Toggling live inst
 
 ### 4. Diagnostic System Console
 Shows real-time status statements:
-- `[12:00:00] Initializing PrintFlow Agent (Simulation)...`
+- `[12:00:00] Initializing RapidDocs Agent (Simulation)...`
 - `[12:00:04] Discovered 4 printers`
 - `[12:00:15] Connected to shop dashboard: Test Xerox`
 - `[12:01:00] Polling print jobs...`

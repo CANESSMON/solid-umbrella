@@ -1,4 +1,4 @@
-# PrintFlow SaaS — Test Report
+# RapidDocs SaaS — Test Report
 
 **Date:** 2026-06-08  
 **Environment:** `localhost` (Next.js 15.5 + PostgreSQL + Tauri Agent frontend)  
@@ -14,12 +14,12 @@
 | Web Server (SaaS) | Next.js 15.5, Prisma, PostgreSQL | http://localhost:3000 |
 | Desktop Agent Frontend | Vite + React + Tailwind | http://localhost:1420 |
 | Desktop Agent Backend | Tauri (Rust) | Windows native |
-| Database | PostgreSQL @ localhost:5432 | printflow schema |
+| Database | PostgreSQL @ localhost:5432 | rapiddocs schema |
 
 **Test Credentials:**
 | Role | Email | Password |
 |------|-------|----------|
-| Super Admin | admin@printflow.com | admin123 |
+| Super Admin | admin@rapiddocs.com | admin123 |
 | Shop Owner | john@alphacopy.com | password123 |
 
 ---
